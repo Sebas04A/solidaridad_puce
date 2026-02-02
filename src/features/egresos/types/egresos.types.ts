@@ -2,7 +2,7 @@
 
 export type EstadoDespacho = 'preparando' | 'validado' | 'despachado' | 'rectificado';
 
-export type MotivoEgreso = 
+export type MotivoEgreso =
   | 'terremoto'
   | 'inundacion'
   | 'incendio'
