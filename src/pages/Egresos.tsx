@@ -36,21 +36,28 @@ export function EgresosPage() {
   const columns = [
     { key: 'codigo', header: 'Código' },
     { key: 'beneficiario', header: 'Beneficiario' },
-    { 
-      key: 'motivo', 
+    {
+      key: 'motivo',
       header: 'Motivo',
       render: (item: typeof despachosDemo[0]) => motivoLabels[item.motivo] || item.motivo
     },
     { key: 'items', header: 'Items' },
     { key: 'fecha', header: 'Fecha' },
-    { 
-      key: 'estado', 
+    {
+      key: 'estado',
       header: 'Estado',
       render: (item: typeof despachosDemo[0]) => (
         <Badge variant={estadoVariants[item.estado]}>{estadoLabels[item.estado]}</Badge>
       )
     },
   ];
+
+  const handleCompleteDispatch = () => {
+    // Return to list view
+    setIsCreating(false);
+    // TODO: In a real app, we would refetch despachos from Supabase here
+    // to show the newly created dispatch in the table
+  };
 
   if (isCreating) {
     return (
@@ -59,7 +66,7 @@ export function EgresosPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver al listado
         </Button>
-        <DespachoWizard />
+        <DespachoWizard onComplete={handleCompleteDispatch} />
       </div>
     );
   }

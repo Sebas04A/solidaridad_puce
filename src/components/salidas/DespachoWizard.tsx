@@ -18,7 +18,11 @@ const STEPS = [
   'Cierre'
 ];
 
-export const DespachoWizard: React.FC = () => {
+interface Props {
+  onComplete?: () => void;
+}
+
+export const DespachoWizard: React.FC<Props> = ({ onComplete }) => {
   const [state, setState] = useState<DespachoState>({
     step: 0,
     beneficiaryId: null,
@@ -38,6 +42,12 @@ export const DespachoWizard: React.FC = () => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete();
+    }
+  };
+
   const renderStep = () => {
     switch (state.step) {
       case 0:
@@ -46,9 +56,9 @@ export const DespachoWizard: React.FC = () => {
         return <ItemSelectionStep state={state} updateState={updateState} onNext={nextStep} onBack={prevStep} />;
       case 2:
         return <TransportStep state={state} updateState={updateState} onNext={nextStep} onBack={prevStep} />;
-      case 3: 
+      case 3:
         // Rectification / Closing Flow
-        return <ClosingStep state={state} onBack={prevStep} />;
+        return <ClosingStep state={state} onBack={prevStep} onComplete={handleComplete} />;
       default:
         return <div>Step {state.step + 1}</div>;
 
@@ -87,3 +97,4 @@ export const DespachoWizard: React.FC = () => {
     </div>
   );
 };
+

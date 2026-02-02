@@ -8,12 +8,13 @@ import { toast } from 'react-hot-toast';
 interface Props {
   state: DespachoState;
   onBack: () => void;
+  onComplete: () => void;
 }
 
-export const ClosingStep: React.FC<Props> = ({ state, onBack }) => {
+export const ClosingStep: React.FC<Props> = ({ state, onBack, onComplete }) => {
   const [isRectifying, setIsRectifying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // This step assumes we are reviewing -> rectifying -> saving.
   // Or maybe we save first? 
   // Let's follow: Review -> Open Rectification Modal -> Confirm -> Save everything.
@@ -61,13 +62,15 @@ export const ClosingStep: React.FC<Props> = ({ state, onBack }) => {
         }
       }
       */
-     
+
       // Simulation for now
       console.log("Saving Dispatch with Adjustments:", adjustments);
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       toast.success("Despacho registrado correctamente");
-      // Redirect or Reset
+
+      // Call the onComplete callback to redirect
+      onComplete();
     } catch (error) {
       toast.error("Error al guardar despacho");
       console.error(error);
@@ -78,7 +81,7 @@ export const ClosingStep: React.FC<Props> = ({ state, onBack }) => {
 
   return (
     <div className="p-6 text-center">
-      <RectificationModal 
+      <RectificationModal
         isOpen={isRectifying}
         onClose={() => setIsRectifying(false)}
         items={state.items.map(i => ({ tempId: i.tempId, nombre: i.producto.nombre, cantidad: i.cantidad }))}
@@ -91,14 +94,15 @@ export const ClosingStep: React.FC<Props> = ({ state, onBack }) => {
       <h2 className="text-2xl font-bold mb-2">Todo Listo para Despachar</h2>
       <p className="text-gray-600 mb-8">
         Has seleccionado {state.items.length} productos para {state.beneficiaryId ? 'el beneficiario seleccionado' : '...'}
-        <br/>
+        <br />
         Costo estimado de transporte: ${state.transportCost}
       </p>
 
       <div className="flex gap-4 justify-center">
-        <Button variant="secondary" onClick={onBack}>Volver a Revisar</Button>
-        <Button 
-          variant="primary" 
+        <Button type="button" variant="secondary" onClick={onBack}>Volver a Revisar</Button>
+        <Button
+          type="button"
+          variant="primary"
           className="bg-green-600 hover:bg-green-700 w-48 py-3 text-lg"
           onClick={() => setIsRectifying(true)}
           disabled={isSaving}
@@ -106,10 +110,11 @@ export const ClosingStep: React.FC<Props> = ({ state, onBack }) => {
           {isSaving ? 'Procesando...' : 'Iniciar Despacho'}
         </Button>
       </div>
-      
+
       <p className="text-xs text-gray-400 mt-4">
         Al hacer clic, se abrirá la ventana de rectificación final antes de guardar.
       </p>
     </div>
   );
 };
+

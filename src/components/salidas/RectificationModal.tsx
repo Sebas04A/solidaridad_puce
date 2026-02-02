@@ -36,37 +36,44 @@ export const RectificationModal: React.FC<{
     onClose();
   };
 
+  // Reset adjustments when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setAdjustments({});
+    }
+  }, [isOpen]);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Rectificación de Inventario Físico">
-      <div className="min-w-[500px]">
-        <div className="bg-yellow-50 p-4 rounded-md mb-4 text-sm text-yellow-800">
+    <Modal isOpen={isOpen} onClose={onClose} title="Rectificación de Inventario Físico" size="lg">
+      <div className="max-h-[70vh] overflow-y-auto">
+        <div className="bg-yellow-50 p-4 rounded-lg mb-4 text-sm text-yellow-800">
           ⚠️ Verifique el conteo físico antes de despachar. Si hay diferencias, se generará un registro automático de mermas.
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="p-2 text-left">Producto</th>
-                <th className="p-2 text-center">Cant. Sistema</th>
-                <th className="p-2 text-center">Cant. Real (Física)</th>
+                <th className="p-3 text-left font-medium">Producto</th>
+                <th className="p-3 text-center font-medium">Cant. Sistema</th>
+                <th className="p-3 text-center font-medium">Cant. Real (Física)</th>
               </tr>
             </thead>
             <tbody>
               {items.map(item => {
                 const realQty = adjustments[item.tempId] !== undefined ? adjustments[item.tempId] : item.cantidad;
                 const diff = realQty - item.cantidad;
-                
+
                 return (
                   <tr key={item.tempId} className="border-b">
-                    <td className="p-2 font-medium">{item.nombre}</td>
-                    <td className="p-2 text-center">{item.cantidad}</td>
-                    <td className="p-2 text-center">
-                      <input 
+                    <td className="p-3 font-medium">{item.nombre}</td>
+                    <td className="p-3 text-center text-gray-600">{item.cantidad}</td>
+                    <td className="p-3 text-center">
+                      <input
                         type="number"
                         min="0"
-                        className={`w-20 p-1 border rounded text-center font-bold
-                          ${diff < 0 ? 'text-red-600 border-red-300 bg-red-50' : 'text-green-600'}`}
+                        className={`w-24 p-2 border rounded-lg text-center font-bold focus:outline-none focus:ring-2
+                          ${diff < 0 ? 'text-red-600 border-red-300 bg-red-50 focus:ring-red-400' : 'text-green-600 border-gray-300 focus:ring-green-400'}`}
                         value={realQty}
                         onChange={(e) => handleQtyChange(item.tempId, Number(e.target.value))}
                       />
@@ -78,11 +85,14 @@ export const RectificationModal: React.FC<{
           </table>
         </div>
 
-        <div className="flex justify-end pt-4 gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSave}>Confirmar Despacho</Button>
+        <div className="flex justify-end pt-4 gap-3 border-t mt-4">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button type="button" variant="primary" className="bg-green-600 hover:bg-green-700" onClick={handleSave}>
+            Confirmar Despacho
+          </Button>
         </div>
       </div>
     </Modal>
   );
 };
+
