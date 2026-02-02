@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Truck, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, Truck, CheckCircle, ArrowLeft, RefreshCw, Eye, Edit2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { DataTable as Table } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { MOTIVOS_EGRESO } from '@/lib/constants';
 import { DespachoWizard } from '@/components/salidas/DespachoWizard';
+import { DespachoStateModal } from '@/components/salidas/DespachoStateModal';
+import { DespachoDetailModal } from '@/components/salidas/DespachoDetailModal';
 import { supabase } from '@/lib/supabase';
 
 // Type for despacho data from Supabase
@@ -25,6 +27,9 @@ const estadoVariants: Record<string, 'success' | 'warning' | 'info' | 'default'>
   preparando: 'info',
   validado: 'success',
   despachado: 'default',
+  en_camino: 'info',
+  completado: 'success',
+  cancelado: 'warning',
   rectificado: 'warning',
 };
 
@@ -32,6 +37,9 @@ const estadoLabels: Record<string, string> = {
   preparando: 'Preparando',
   validado: 'Validado',
   despachado: 'Despachado',
+  en_camino: 'En Camino',
+  completado: 'Completado',
+  cancelado: 'Cancelado',
   rectificado: 'Rectificado',
 };
 
@@ -42,6 +50,11 @@ export function EgresosPage() {
   const [despachos, setDespachos] = useState<DespachoRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ preparando: 0, despachados: 0, beneficiarios: 0 });
+
+  // Modal states
+  const [selectedDespacho, setSelectedDespacho] = useState<DespachoRow | null>(null);
+  const [isStateModalOpen, setIsStateModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const fetchDespachos = useCallback(async () => {
     setIsLoading(true);
@@ -70,7 +83,7 @@ export function EgresosPage() {
 
         // Calculate stats
         const preparando = typedData.filter(d => d.estado === 'preparando').length;
-        const despachados = typedData.filter(d => d.estado === 'despachado').length;
+        const despachados = typedData.filter(d => d.estado === 'despachado' || d.estado === 'completado').length;
         const uniqueBeneficiarios = new Set(typedData.map(d => d.beneficiario_id)).size;
         setStats({ preparando, despachados, beneficiarios: uniqueBeneficiarios });
       }
@@ -84,6 +97,16 @@ export function EgresosPage() {
   useEffect(() => {
     fetchDespachos();
   }, [fetchDespachos]);
+
+  const handleOpenStateModal = (despacho: DespachoRow) => {
+    setSelectedDespacho(despacho);
+    setIsStateModalOpen(true);
+  };
+
+  const handleOpenDetailModal = (despacho: DespachoRow) => {
+    setSelectedDespacho(despacho);
+    setIsDetailModalOpen(true);
+  };
 
   const columns = [
     { key: 'codigo', header: 'Código' },
@@ -107,6 +130,32 @@ export function EgresosPage() {
       header: 'Estado',
       render: (item: DespachoRow) => (
         <Badge variant={estadoVariants[item.estado] || 'default'}>{estadoLabels[item.estado] || item.estado}</Badge>
+      )
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      render: (item: DespachoRow) => (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleOpenDetailModal(item)}
+            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Ver detalle"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {item.estado !== 'completado' && item.estado !== 'cancelado' && (
+            <button
+              type="button"
+              onClick={() => handleOpenStateModal(item)}
+              className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+              title="Cambiar estado"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )
     },
   ];
@@ -197,6 +246,27 @@ export function EgresosPage() {
           emptyMessage="No hay despachos registrados"
         />
       )}
+
+      {/* Modals */}
+      <DespachoStateModal
+        isOpen={isStateModalOpen}
+        onClose={() => {
+          setIsStateModalOpen(false);
+          setSelectedDespacho(null);
+        }}
+        despacho={selectedDespacho}
+        onSuccess={fetchDespachos}
+      />
+
+      <DespachoDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedDespacho(null);
+        }}
+        despachoId={selectedDespacho?.id || null}
+      />
     </div>
   );
 }
+
