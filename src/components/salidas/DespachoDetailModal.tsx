@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
 import { supabase } from '../../lib/supabase';
-import { Package, User, MapPin, Truck, FileText, Image } from 'lucide-react';
+import { Package, User, MapPin, Truck, FileText } from 'lucide-react';
 import { MOTIVOS_EGRESO } from '../../lib/constants';
 
 interface Props {
@@ -20,8 +20,6 @@ interface DespachoDetail {
     estado: string;
     fue_rectificado: boolean;
     rectificacion_notas: string | null;
-    evidencia_url?: string | null;
-    fecha_entrega?: string | null;
     beneficiarios: {
         nombre: string;
         sector: string | null;
@@ -87,57 +85,67 @@ export const DespachoDetailModal: React.FC<Props> = ({ isOpen, onClose, despacho
 
         setIsLoading(true);
         try {
-            // Fetch despacho with beneficiario and preparado_por
+            // Fetch despacho with beneficiario (simpler query without perfiles join)
             const { data: despachoData, error: despachoError } = await supabase
                 .from('despachos')
                 .select(`
-          id,
-          codigo,
-          motivo,
-          motivo_detalle,
-          fecha_despacho,
-          estado,
-          fue_rectificado,
-          rectificacion_notas,
-          evidencia_url,
-          fecha_entrega,
-          beneficiarios (
-            nombre,
-            sector,
-            provincia,
-            canton,
-            parroquia,
-            contacto_nombre,
-            contacto_telefono
-          ),
-          perfiles:preparado_por (
-            nombre
-          )
-        `)
+                    id,
+                    codigo,
+                    motivo,
+                    motivo_detalle,
+                    fecha_despacho,
+                    estado,
+                    fue_rectificado,
+                    rectificacion_notas,
+                    preparado_por,
+                    beneficiarios (
+                        nombre,
+                        sector,
+                        provincia,
+                        canton,
+                        parroquia,
+                        contacto_nombre,
+                        contacto_telefono
+                    )
+                `)
                 .eq('id', despachoId)
                 .single();
 
             if (despachoError) {
                 console.error('Error fetching despacho:', despachoError);
-            } else {
-                setDespacho(despachoData as DespachoDetail);
+                setDespacho(null);
+            } else if (despachoData) {
+                // Cast and set the data
+                const typedData = despachoData as any;
+                setDespacho({
+                    id: typedData.id,
+                    codigo: typedData.codigo,
+                    motivo: typedData.motivo,
+                    motivo_detalle: typedData.motivo_detalle,
+                    fecha_despacho: typedData.fecha_despacho,
+                    estado: typedData.estado,
+                    fue_rectificado: typedData.fue_rectificado,
+                    rectificacion_notas: typedData.rectificacion_notas,
+                    beneficiarios: typedData.beneficiarios,
+                    perfiles: null
+                });
             }
 
             // Fetch egresos (items) for this despacho
             const { data: itemsData, error: itemsError } = await supabase
                 .from('egresos')
                 .select(`
-          id,
-          cantidad_solicitada,
-          cantidad_despachada,
-          lotes (
-            codigo,
-            productos (
-              nombre,
-              unidad_medida
-            )
-          )
-        `)
+                    id,
+                    cantidad_solicitada,
+                    cantidad_despachada,
+                    lotes (
+                        codigo,
+                        productos (
+                            nombre,
+                            unidad_medida
+                        )
+                    )
+                `)
                 .eq('despacho_id', despachoId);
 
             if (itemsError) {
@@ -147,6 +155,7 @@ export const DespachoDetailModal: React.FC<Props> = ({ isOpen, onClose, despacho
             }
         } catch (error) {
             console.error('Error:', error);
+            setDespacho(null);
         } finally {
             setIsLoading(false);
         }
@@ -248,9 +257,6 @@ export const DespachoDetailModal: React.FC<Props> = ({ isOpen, onClose, despacho
                             </div>
                             <div className="text-sm text-gray-600 space-y-1">
                                 <p>Preparado por: {despacho.perfiles?.nombre || 'No disponible'}</p>
-                                {despacho.fecha_entrega && (
-                                    <p>Entregado: {new Date(despacho.fecha_entrega).toLocaleDateString('es-EC')}</p>
-                                )}
                                 {despacho.fue_rectificado && (
                                     <p className="text-orange-600">⚠️ Fue rectificado</p>
                                 )}
@@ -308,21 +314,6 @@ export const DespachoDetailModal: React.FC<Props> = ({ isOpen, onClose, despacho
                             <p className="text-sm text-gray-500 text-center py-4">No hay productos registrados</p>
                         )}
                     </div>
-
-                    {/* Evidencia */}
-                    {despacho.evidencia_url && (
-                        <div>
-                            <div className="flex items-center gap-2 text-gray-700 mb-3">
-                                <Image className="w-4 h-4" />
-                                <span className="font-medium">Evidencia de Entrega</span>
-                            </div>
-                            <img
-                                src={despacho.evidencia_url}
-                                alt="Evidencia de entrega"
-                                className="w-full max-h-64 object-contain rounded-lg border"
-                            />
-                        </div>
-                    )}
 
                     {/* Notas de rectificación */}
                     {despacho.rectificacion_notas && (
