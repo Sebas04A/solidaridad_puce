@@ -16,7 +16,7 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
   const [kits, setKits] = useState<Kit[]>([]);
   const [selectedKit, setSelectedKit] = useState<Kit | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  
+
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -27,6 +27,9 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
     if (isOpen) {
       fetchKits();
       fetchProducts();
+      // Reset editing state when modal opens
+      setIsEditing(false);
+      setSelectedKit(null);
     }
   }, [isOpen]);
 
@@ -59,6 +62,14 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
     setIsEditing(true);
   };
 
+  const handleCancel = () => {
+    setIsEditing(false);
+    setSelectedKit(null);
+    setEditName('');
+    setEditDesc('');
+    setEditItems([]);
+  };
+
   const handleSave = async () => {
     if (!editName.trim()) return toast.error('El nombre es obligatorio');
     if (editItems.length === 0) return toast.error('El kit debe tener al menos un item');
@@ -72,7 +83,7 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
         nombre: editName,
         descripcion: editDesc
       }).select().single();
-      
+
       if (error) return toast.error('Error creando kit');
       // @ts-ignore
       kitId = data.id;
@@ -83,7 +94,7 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
         nombre: editName,
         descripcion: editDesc
       }).eq('id', kitId);
-      
+
       // Delete old items to simpler replacement
       await supabase.from('items_kit').delete().eq('kit_id', kitId);
     }
@@ -103,6 +114,7 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
     } else {
       toast.success('Kit guardado correctamente');
       setIsEditing(false);
+      setSelectedKit(null);
       fetchKits();
       onKitUpdated();
     }
@@ -122,7 +134,7 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
   const addItemToEdit = (productId: number) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
-    
+
     setEditItems(prev => {
       const existing = prev.find(i => i.producto_id === productId);
       if (existing) {
@@ -136,84 +148,97 @@ export const KitManagerModal: React.FC<Props> = ({ isOpen, onClose, onKitUpdated
     setEditItems(prev => prev.map(i => i.producto_id === productId ? { ...i, cantidad: qty } : i).filter(i => (i.cantidad || 0) > 0));
   };
 
+  const handleClose = () => {
+    setIsEditing(false);
+    setSelectedKit(null);
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Gestión de Kits">
-      <div className="min-w-[600px] min-h-[400px]">
+    <Modal isOpen={isOpen} onClose={handleClose} title={isEditing ? (selectedKit ? 'Editar Kit' : 'Nuevo Kit') : 'Gestión de Kits'} size="lg">
+      <div className="max-h-[70vh] overflow-y-auto">
         {isEditing ? (
           <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">{selectedKit ? 'Editar Kit' : 'Nuevo Kit'}</h3>
-              <Button onClick={() => setIsEditing(false)} variant="secondary">Cancelar</Button>
-            </div>
-            
-            <Input label="Nombre del Kit" value={editName} onChange={e => setEditName(e.target.value)} />
+            <Input label="Nombre del Kit *" value={editName} onChange={e => setEditName(e.target.value)} />
             <Input label="Descripción" value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-            
+
             <div className="border-t pt-4">
               <h4 className="font-medium mb-2">Items del Kit</h4>
               <div className="flex gap-2 mb-2">
-                 <select 
-                   className="flex-1 border rounded p-2"
-                   onChange={(e) => {
-                      addItemToEdit(Number(e.target.value));
-                      e.target.value = '';
-                   }}
-                 >
-                    <option value="">Agregar producto...</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.nombre} ({p.unidad_medida})</option>
-                    ))}
-                 </select>
+                <select
+                  className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  onChange={(e) => {
+                    addItemToEdit(Number(e.target.value));
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="">Agregar producto...</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre} ({p.unidad_medida})</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 p-2 rounded">
+              <div className="space-y-2 max-h-48 overflow-y-auto bg-gray-50 p-3 rounded-lg">
                 {editItems.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <span>{item.producto?.nombre}</span>
+                  <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 rounded border">
+                    <span className="font-medium">{item.producto?.nombre}</span>
                     <div className="flex items-center gap-2">
-                       <input 
-                         type="number" 
-                         min="1" 
-                         className="w-16 border rounded p-1"
-                         value={item.cantidad}
-                         onChange={e => updateItemQty(item.producto_id!, Number(e.target.value))}
-                       />
-                       <button onClick={() => updateItemQty(item.producto_id!, 0)} className="text-red-500">X</button>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-16 border border-gray-300 rounded p-1 text-center"
+                        value={item.cantidad}
+                        onChange={e => updateItemQty(item.producto_id!, Number(e.target.value))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItemQty(item.producto_id!, 0)}
+                        className="text-red-500 hover:text-red-700 font-bold px-2"
+                      >
+                        ×
+                      </button>
                     </div>
                   </div>
                 ))}
-                {editItems.length === 0 && <p className="text-gray-400 text-center">Sin items</p>}
+                {editItems.length === 0 && <p className="text-gray-400 text-center py-4">Sin items agregados</p>}
               </div>
             </div>
 
-            <div className="pt-4 flex justify-end">
-              <Button onClick={handleSave} variant="primary">Guardar Kit</Button>
+            <div className="pt-4 flex justify-end gap-2 border-t">
+              <Button type="button" onClick={handleCancel} variant="ghost">Cancelar</Button>
+              <Button type="button" onClick={handleSave} variant="primary">Guardar Kit</Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-             <Button onClick={handleCreate} className="w-full bg-green-600 hover:bg-green-700 text-white">
-                + Crear Nuevo Kit
-             </Button>
+            <Button type="button" onClick={handleCreate} className="w-full bg-green-600 hover:bg-green-700 text-white">
+              + Crear Nuevo Kit
+            </Button>
 
-             <div className="grid gap-4 max-h-[400px] overflow-y-auto">
-                {kits.map(kit => (
-                  <div key={kit.id} className="border p-4 rounded-lg flex justify-between items-center hover:shadow-md transition">
-                    <div>
-                      <h4 className="font-bold">{kit.nombre}</h4>
+            <div className="grid gap-3 max-h-[50vh] overflow-y-auto">
+              {kits.length === 0 ? (
+                <p className="text-center text-gray-400 py-8">No hay kits creados</p>
+              ) : (
+                kits.map(kit => (
+                  <div key={kit.id} className="border p-4 rounded-lg flex justify-between items-center hover:shadow-md transition bg-white">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold truncate">{kit.nombre}</h4>
                       <p className="text-sm text-gray-500">{kit.items?.length || 0} productos</p>
-                      <p className="text-xs text-gray-400">{kit.descripcion}</p>
+                      {kit.descripcion && <p className="text-xs text-gray-400 truncate">{kit.descripcion}</p>}
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(kit)}>Editar</Button>
-                      <Button size="sm" className="bg-red-100 text-red-600 hover:bg-red-200" onClick={() => handleDelete(kit.id)}>Eliminar</Button>
+                    <div className="flex gap-2 ml-4 shrink-0">
+                      <Button type="button" size="sm" variant="secondary" onClick={() => handleEdit(kit)}>Editar</Button>
+                      <Button type="button" size="sm" className="bg-red-100 text-red-600 hover:bg-red-200" onClick={() => handleDelete(kit.id)}>Eliminar</Button>
                     </div>
                   </div>
-                ))}
-             </div>
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
     </Modal>
   );
 };
+
