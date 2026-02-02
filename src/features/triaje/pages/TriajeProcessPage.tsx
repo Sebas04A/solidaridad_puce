@@ -99,13 +99,19 @@ export default function TriajeProcessPage() {
   // Auxiliary effect to get lote_id if not in view
   const [realLoteId, setRealLoteId] = useState<number | null>(null);
   useEffect(() => {
-    if (bulto) {
-        // Fetch the underlying lote_id from ingresos table
-        supabase.from('ingresos').select('lote_id').eq('id', bulto.ingreso_id).single()
-        .then(({data}) => {
-            if (data) setRealLoteId(data.lote_id);
-        });
+    async function fetchLoteId() {
+      if (bulto) {
+          // Fetch the underlying lote_id from ingresos table
+          const { data } = await (supabase
+            .from('ingresos') as any)
+            .select('lote_id')
+            .eq('id', bulto.ingreso_id)
+            .single();
+          
+          if (data) setRealLoteId(data.lote_id);
+      }
     }
+    fetchLoteId();
   }, [bulto]);
   
   const submitWithLoteId = async () => {
